@@ -1,0 +1,12 @@
+node_modules/
+data/
+dist/
+*.log
+output.jpg
+.DS_Store
+Thumbs.db
+.env
+.env.*
+*.pem
+deploy.local.*
+*.zip
