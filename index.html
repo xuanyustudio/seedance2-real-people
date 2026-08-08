@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>seedance2.0 人脸直过接口</title>
+<style>
+  :root {
+    --bg0: #f3efe6;
+    --bg1: #e8e2d4;
+    --ink: #1a1814;
+    --muted: #5c574e;
+    --line: #c9c0ae;
+    --accent: #0f6b5c;
+    --accent-soft: #d8efe9;
+    --danger: #b42318;
+    --panel: rgba(255, 252, 246, 0.88);
+    --shadow: 0 18px 50px rgba(40, 32, 18, 0.08);
+    --display: "Segoe UI Variable Display", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --body: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    color: var(--ink);
+    font-family: var(--body);
+    background:
+      radial-gradient(900px 480px at 8% -10%, #fff8e8 0%, transparent 55%),
+      radial-gradient(700px 420px at 100% 20%, #d9efe8 0%, transparent 50%),
+      linear-gradient(180deg, var(--bg0), var(--bg1));
+  }
+
+  .wrap {
+    width: min(920px, calc(100% - 32px));
+    margin: 0 auto;
+    padding: 40px 0 56px;
+  }
+
+  .brand {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 28px;
+    animation: rise 0.7s ease both;
+  }
+  .brand-mark {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .brand-mark h1 {
+    margin: 0;
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: clamp(2rem, 5vw, 3rem);
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+  }
+  .brand-mark h1 span {
+    color: var(--accent);
+  }
+  .tag {
+    align-self: flex-start;
+    margin: 0;
+    padding: 4px 10px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: rgba(255,255,255,0.55);
+  }
+  .lead {
+    margin: 0;
+    max-width: 36em;
+    color: var(--muted);
+    font-size: 1.05rem;
+    line-height: 1.55;
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(8px);
+    padding: 22px;
+    margin-bottom: 22px;
+    animation: rise 0.75s ease both;
+  }
+  .panel:nth-of-type(2) { animation-delay: 0.06s; }
+  .panel:nth-of-type(3) { animation-delay: 0.12s; }
+
+  .panel h2 {
+    margin: 0 0 14px;
+    font-family: var(--display);
+    font-size: 1.25rem;
+    letter-spacing: -0.02em;
+  }
+
+  .bar {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+
+  .file-btn {
+    position: relative;
+    overflow: hidden;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 999px;
+    border: 1px solid #0b5448;
+    background: var(--accent);
+    color: #f7fffc;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s ease, background 0.2s ease;
+  }
+  .file-btn:hover { transform: translateY(-1px); background: #0c5a4d; }
+  .file-btn:disabled,
+  .file-btn.is-disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+  }
+  .file-btn input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+  .file-btn:disabled input,
+  .file-btn.is-disabled input { cursor: not-allowed; }
+
+  .check {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted);
+    font-size: 0.95rem;
+    user-select: none;
+  }
+
+  .size-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 4px 0 12px;
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+  .size-row input[type="range"] {
+    width: min(280px, 100%);
+    accent-color: var(--accent);
+  }
+  .size-row strong {
+    color: var(--ink);
+    min-width: 1.5em;
+    display: inline-block;
+  }
+
+  #status {
+    min-height: 1.4em;
+    margin: 4px 0 12px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  #status.err { color: var(--danger); }
+
+  .preview {
+    display: grid;
+    place-items: center;
+    min-height: 220px;
+    border: 1px dashed var(--line);
+    border-radius: 14px;
+    background:
+      linear-gradient(135deg, rgba(15,107,92,0.05), transparent 40%),
+      #fffdf8;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  }
+  .preview.is-dragover {
+    border-color: var(--accent);
+    border-style: solid;
+    background:
+      linear-gradient(135deg, rgba(15,107,92,0.12), transparent 45%),
+      #f3fbf8;
+    box-shadow: inset 0 0 0 1px rgba(15,107,92,0.25);
+  }
+  .preview.is-busy {
+    cursor: wait;
+    pointer-events: none;
+    opacity: 0.85;
+  }
+  .preview img {
+    display: block;
+    max-width: 100%;
+    max-height: 520px;
+  }
+  .preview .placeholder {
+    color: var(--muted);
+    font-size: 0.95rem;
+    padding: 24px;
+    text-align: center;
+    line-height: 1.55;
+    pointer-events: none;
+  }
+  .preview .placeholder strong {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--ink);
+    font-weight: 650;
+  }
+
+  /* 左 1/3 完整原图，右 2/3 完整结果 */
+  .preview-split {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    width: 100%;
+    height: min(520px, 70vh);
+    min-height: 280px;
+  }
+  .preview-split .split-pane {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    background: #f3efe6;
+    overflow: hidden;
+  }
+  .preview-split .split-pane.before {
+    border-right: 2px solid #fff;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.12);
+  }
+  .preview-split .split-pane img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    object-fit: contain;
+    object-position: center;
+  }
+  .preview-split .split-tag {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 2;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+    color: #fff;
+    background: rgba(20, 18, 16, 0.55);
+    pointer-events: none;
+  }
+
+  .check .badge-strong {
+    margin-left: 2px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: #1a1a1a;
+    color: #f5e6a8;
+    font-size: 0.78em;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  select.cool {
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--panel);
+    font-size: 0.95rem;
+    color: var(--ink);
+    font-family: var(--body);
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  select.cool:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(15,107,92,0.15);
+  }
+  select.cool option { background: #fffcf5; color: var(--ink); }
+  .api-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .chip {
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: #0a4d42;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .chip.alt {
+    background: #fff4df;
+    color: #6a4b12;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0 16px;
+    font-size: 0.95rem;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  th {
+    width: 22%;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  code, pre {
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  }
+  code {
+    padding: 1px 6px;
+    border-radius: 6px;
+    background: #efe9db;
+    font-size: 0.9em;
+  }
+  pre {
+    margin: 0 0 14px;
+    padding: 14px 16px;
+    overflow: auto;
+    border-radius: 12px;
+    background: #1f1c18;
+    color: #f4efe6;
+    font-size: 0.86rem;
+    line-height: 1.5;
+  }
+  .api-note {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.95rem;
+    line-height: 1.55;
+  }
+
+  .contact {
+    text-align: center;
+    padding: 28px 12px 8px;
+    color: var(--muted);
+    animation: rise 0.8s ease both;
+    animation-delay: 0.16s;
+  }
+  .contact strong {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--ink);
+    font-family: var(--display);
+    font-size: 1.05rem;
+  }
+  .contact a {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .contact a:hover { text-decoration: underline; }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  @media (max-width: 640px) {
+    .wrap { padding-top: 28px; }
+    .panel { padding: 16px; }
+    th { width: 30%; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="brand">
+      <p class="tag">Local Eye Mask API</p>
+      <div class="brand-mark">
+        <h1>seedance<span>2.0</span></h1>
+      </div>
+      <p class="lead">人脸直过接口 — 上传图片，自动遮挡眼睛（白底黑边方块），返回可访问结果图地址。全部本地处理。</p>
+    </header>
+
+    <section class="panel" aria-labelledby="demo-title">
+      <h2 id="demo-title">在线试一下</h2>
+      <div class="bar">
+        <label class="file-btn is-disabled" id="fileBtn">
+          选择图片
+          <input type="file" id="file" accept="image/*" disabled>
+        </label>
+        <label class="check">
+          <input type="checkbox" id="singleEye" checked> 每脸遮单眼
+        </label>
+      </div>
+      <div class="size-row">
+        <span>遮挡框大小</span>
+        <input type="range" id="size" min="1" max="10" step="1" value="5">
+        <strong id="sizeVal">5</strong>
+        <span>（2≈眼睛，10≈整张脸，默认 5）</span>
+      </div>
+      <div id="status">准备就绪，拖入或选择图片。</div>
+      <div class="preview" id="preview" role="button" tabindex="0" aria-label="拖入或点击选择图片">
+        <div class="placeholder">
+          <strong>拖拽图片到这里</strong>
+          或点击选择 · 支持 jpg / png / webp
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="api-title">
+      <h2 id="api-title">API 接口</h2>
+      <div class="api-meta">
+        <span class="chip">POST /api/detect</span>
+        <span class="chip alt">multipart/form-data</span>
+        <span class="chip alt">BaseURL：<code id="baseUrlText">…</code></span>
+      </div>
+
+      <table>
+        <thead>
+          <tr><th>字段</th><th>说明</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>image</code></td>
+            <td>必填。jpg / png / webp。处理时长边&gt;1600 等比缩小；结果一律 <code>.webp</code></td>
+          </tr>
+          <tr>
+            <td><code>detector</code></td>
+            <td>可选。<code>onnx</code> / <code>haar</code> / <code>auto</code>（自动选）；默认自动</td>
+          </tr>
+          <tr>
+            <td><code>noFace</code></td>
+            <td>可选。<code>1</code> / <code>true</code> / <code>yes</code> 时跳过人脸、全图检眼（仅 Haar 生效）</td>
+          </tr>
+          <tr>
+            <td><code>singleEye</code></td>
+            <td>可选。每脸只遮一只眼。<code>1</code> / <code>true</code> / <code>yes</code> 开，<code>0</code> / <code>false</code> / <code>no</code> 关；省略默认开</td>
+          </tr>
+          <tr>
+            <td><code>size</code></td>
+            <td>可选。遮挡框大小 <code>1</code>–<code>10</code>：<code>2</code>≈眼睛大小，<code>10</code>≈整张脸；默认 <code>5</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p class="api-note">成功响应示例：</p>
+<pre id="sampleResponse"></pre>
+
+      <p class="api-note">调用示例：</p>
+<pre id="sampleCurl"></pre>
+
+      <p class="api-note">
+        原图与结果图按日期目录同 id 映射：
+        <code>data/in/YYYY-MM-DD/{id}.ext</code> ↔
+        <code>data/out/YYYY-MM-DD/{id}.webp</code>。
+        处理时长边超过 1600 会等比缩小；结果一律 WebP。
+        默认保留 30 天（环境变量 <code>RETENTION_DAYS</code>）。
+        更完整说明见 <code>docs/API.md</code>。
+      </p>
+    </section>
+
+    <footer class="contact">
+      <strong>联系方式</strong>
+      微信：<a href="#" id="wechat">1244034874</a>
+    </footer>
+  </div>
+
+  <script>
+    const statusEl = document.getElementById('status');
+    const fileInput = document.getElementById('file');
+    const fileBtn = document.getElementById('fileBtn');
+    const singleEyeBox = document.getElementById('singleEye');
+    const sizeInput = document.getElementById('size');
+    const sizeVal = document.getElementById('sizeVal');
+    const preview = document.getElementById('preview');
+    const wechat = document.getElementById('wechat');
+
+    // 文档示例随当前访问地址变化（部署后自动用线上域名）
+    const baseUrl = window.location.origin;
+    document.getElementById('baseUrlText').textContent = baseUrl;
+    document.getElementById('sampleResponse').textContent = `{
+  "ok": true,
+  "id": "43c8b34a30129402",
+  "date": "2026-07-18",
+  "eyeCount": 1,
+  "size": 5,
+  "singleEye": true,
+  "detector": "onnx",
+  "url": "${baseUrl}/data/out/2026-07-18/43c8b34a30129402.webp",
+  "inputUrl": "${baseUrl}/data/in/2026-07-18/43c8b34a30129402.jpg"
+}`;
+    document.getElementById('sampleCurl').textContent =
+      `# 默认自动选模型\ncurl -F "image=@photo.jpg" -F "size=5" ${baseUrl}/api/detect\n` +
+      `# 强制 ONNX / Haar\ncurl -F "image=@photo.jpg" -F "detector=haar" -F "size=5" ${baseUrl}/api/detect\n` +
+      `# 直接检眼（仅 Haar）\ncurl -F "image=@photo.webp" -F "noFace=1" -F "size=8" ${baseUrl}/api/detect`;
+
+    sizeInput.addEventListener('input', () => {
+      sizeVal.textContent = sizeInput.value;
+    });
+
+    fileInput.disabled = false;
+    fileBtn.classList.remove('is-disabled');
+
+    function setStatus(msg, isErr) {
+      statusEl.textContent = msg;
+      statusEl.className = isErr ? 'err' : '';
+    }
+
+    function setBusy(busy) {
+      fileInput.disabled = busy;
+      fileBtn.classList.toggle('is-disabled', busy);
+      preview.classList.toggle('is-busy', busy);
+      preview.setAttribute('aria-busy', busy ? 'true' : 'false');
+    }
+
+    function pickImageFile(fileList) {
+      if (!fileList || !fileList.length) return null;
+      for (const f of fileList) {
+        if (f && (f.type || '').startsWith('image/')) return f;
+      }
+      const first = fileList[0];
+      if (first && /\.(jpe?g|png|webp)$/i.test(first.name || '')) return first;
+      return null;
+    }
+
+    function showCompare(inputUrl, outUrl) {
+      preview.innerHTML = '';
+
+      const wrap = document.createElement('div');
+      wrap.className = 'preview-split';
+
+      const paneBefore = document.createElement('div');
+      paneBefore.className = 'split-pane before';
+      const before = document.createElement('img');
+      before.alt = '原图';
+      before.src = inputUrl || '';
+      const tagBefore = document.createElement('span');
+      tagBefore.className = 'split-tag';
+      tagBefore.textContent = '原图';
+      paneBefore.appendChild(before);
+      paneBefore.appendChild(tagBefore);
+
+      const paneAfter = document.createElement('div');
+      paneAfter.className = 'split-pane after';
+      const after = document.createElement('img');
+      after.alt = '处理结果';
+      after.src = outUrl;
+      const tagAfter = document.createElement('span');
+      tagAfter.className = 'split-tag';
+      tagAfter.textContent = '结果';
+      paneAfter.appendChild(after);
+      paneAfter.appendChild(tagAfter);
+
+      wrap.appendChild(paneBefore);
+      wrap.appendChild(paneAfter);
+      preview.appendChild(wrap);
+
+      before.addEventListener('error', () => {
+        tagBefore.textContent = '原图加载失败';
+        before.remove();
+      });
+    }
+
+    async function runDetect(file) {
+      setStatus('上传并处理中…');
+      const fd = new FormData();
+      fd.append('image', file, file.name || 'upload.jpg');
+      fd.append('size', String(sizeInput.value || 5));
+      fd.append('singleEye', singleEyeBox.checked ? '1' : '0');
+
+      const res = await fetch('/api/detect', { method: 'POST', body: fd });
+      let data = null;
+      try { data = await res.json(); } catch (_) {}
+      if (!res.ok || !data || !data.ok) {
+        throw new Error((data && data.error) || ('请求失败 HTTP ' + res.status));
+      }
+      showCompare(data.inputUrl, data.url);
+      const faceN = (data.faceCounts && data.faceCounts.merged != null)
+        ? data.faceCounts.merged
+        : 0;
+      const eyeMode = data.singleEye !== false ? '单眼' : '双眼';
+      setStatus(`完成：${faceN} 张脸 · ${data.eyeCount} 只眼睛（${eyeMode}） · size=${data.size} · ${data.url}`);
+    }
+
+    async function handleImageFile(file) {
+      if (!file) return;
+      setBusy(true);
+      try {
+        await runDetect(file);
+      } catch (err) {
+        setStatus('处理失败：' + (err.message || err), true);
+      } finally {
+        setBusy(false);
+        fileInput.value = '';
+      }
+    }
+
+    fileInput.addEventListener('change', async (e) => {
+      const file = pickImageFile(e.target.files);
+      if (!file) {
+        setStatus('请选择 jpg / png / webp 图片', true);
+        return;
+      }
+      await handleImageFile(file);
+    });
+
+    // 点击预览区也可选图（结果图展示时同样支持）
+    preview.addEventListener('click', () => {
+      if (preview.classList.contains('is-busy') || fileInput.disabled) return;
+      fileInput.click();
+    });
+    preview.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      if (preview.classList.contains('is-busy') || fileInput.disabled) return;
+      fileInput.click();
+    });
+
+    let dragDepth = 0;
+    function hasFiles(e) {
+      const types = e.dataTransfer && e.dataTransfer.types;
+      if (!types) return false;
+      return Array.from(types).includes('Files');
+    }
+    preview.addEventListener('dragenter', (e) => {
+      if (!hasFiles(e) || preview.classList.contains('is-busy')) return;
+      e.preventDefault();
+      dragDepth += 1;
+      preview.classList.add('is-dragover');
+    });
+    preview.addEventListener('dragover', (e) => {
+      if (!hasFiles(e) || preview.classList.contains('is-busy')) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      preview.classList.add('is-dragover');
+    });
+    preview.addEventListener('dragleave', (e) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      dragDepth = Math.max(0, dragDepth - 1);
+      if (dragDepth === 0) preview.classList.remove('is-dragover');
+    });
+    preview.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      dragDepth = 0;
+      preview.classList.remove('is-dragover');
+      if (preview.classList.contains('is-busy')) return;
+      const file = pickImageFile(e.dataTransfer && e.dataTransfer.files);
+      if (!file) {
+        setStatus('请拖入 jpg / png / webp 图片', true);
+        return;
+      }
+      await handleImageFile(file);
+    });
+
+    wechat.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const text = '1244034874';
+      try {
+        await navigator.clipboard.writeText(text);
+        setStatus('微信号已复制：' + text);
+      } catch (_) {
+        setStatus('微信号：' + text);
+      }
+    });
+  </script>
+</body>
+</html>

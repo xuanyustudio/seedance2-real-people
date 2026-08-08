@@ -1,0 +1,636 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Debug · seedance2.0 人脸直过</title>
+<style>
+  :root {
+    --bg0: #f3efe6;
+    --bg1: #e8e2d4;
+    --ink: #1a1814;
+    --muted: #5c574e;
+    --line: #c9c0ae;
+    --accent: #0f6b5c;
+    --accent-soft: #d8efe9;
+    --danger: #b42318;
+    --warn: #b47a0a;
+    --panel: rgba(255, 252, 246, 0.88);
+    --shadow: 0 18px 50px rgba(40, 32, 18, 0.08);
+    --display: "Segoe UI Variable Display", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --body: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    color: var(--ink);
+    font-family: var(--body);
+    background:
+      radial-gradient(900px 480px at 8% -10%, #fff8e8 0%, transparent 55%),
+      radial-gradient(700px 420px at 100% 20%, #d9efe8 0%, transparent 50%),
+      linear-gradient(180deg, var(--bg0), var(--bg1));
+  }
+
+  .wrap {
+    width: min(1100px, calc(100% - 32px));
+    margin: 0 auto;
+    padding: 28px 0 56px;
+  }
+
+  .brand {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 22px;
+  }
+  .brand-mark {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .brand-mark h1 {
+    margin: 0;
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+  }
+  .brand-mark h1 span { color: var(--accent); }
+  .brand-mark .sub {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--muted);
+    background: rgba(255,255,255,0.55);
+    padding: 2px 10px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .back-link {
+    color: var(--muted);
+    font-size: 0.9rem;
+    text-decoration: none;
+  }
+  .back-link:hover { color: var(--accent); text-decoration: underline; }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(8px);
+    padding: 22px;
+    margin-bottom: 18px;
+  }
+
+  .panel h2 {
+    margin: 0 0 14px;
+    font-family: var(--display);
+    font-size: 1.2rem;
+    letter-spacing: -0.02em;
+  }
+
+  /* ---- 参数网格 ---- */
+  .param-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 14px;
+    margin-bottom: 10px;
+  }
+  .param-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .param-item label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+  .param-item select,
+  .param-item input[type="range"] {
+    accent-color: var(--accent);
+  }
+  .param-item select {
+    padding: 6px 8px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: #fffdf8;
+    font-size: 0.92rem;
+    color: var(--ink);
+    font-family: var(--body);
+    cursor: pointer;
+  }
+  .param-item select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(15,107,92,0.15);
+  }
+  .param-item select option { background: #fffcf5; color: var(--ink); }
+
+  .check-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+    margin: 6px 0 4px;
+  }
+  .check-row label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 0.92rem;
+    user-select: none;
+    cursor: pointer;
+  }
+
+  .file-btn {
+    position: relative;
+    overflow: hidden;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 16px;
+    border-radius: 999px;
+    border: 1px solid #0b5448;
+    background: var(--accent);
+    color: #f7fffc;
+    font-weight: 600;
+    font-size: 0.92rem;
+    cursor: pointer;
+    transition: transform 0.2s ease, background 0.2s ease;
+  }
+  .file-btn:hover { transform: translateY(-1px); background: #0c5a4d; }
+  .file-btn.is-disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+  .file-btn input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+  .file-btn.is-disabled input { cursor: not-allowed; }
+
+  #status {
+    min-height: 1.4em;
+    margin: 4px 0 10px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--accent);
+  }
+  #status.err { color: var(--danger); }
+  #status.warn { color: var(--warn); }
+
+  .preview {
+    display: grid;
+    place-items: center;
+    min-height: 200px;
+    border: 1px dashed var(--line);
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(15,107,92,0.05), transparent 40%), #fffdf8;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease;
+  }
+  .preview.is-dragover {
+    border-color: var(--accent);
+    border-style: solid;
+    background: linear-gradient(135deg, rgba(15,107,92,0.12), transparent 45%), #f3fbf8;
+    box-shadow: inset 0 0 0 1px rgba(15,107,92,0.25);
+  }
+  .preview.is-busy { cursor: wait; pointer-events: none; opacity: 0.85; }
+  .preview img { display: block; max-width: 100%; max-height: 480px; }
+  .preview .placeholder {
+    color: var(--muted);
+    font-size: 0.92rem;
+    padding: 20px;
+    text-align: center;
+    line-height: 1.55;
+    pointer-events: none;
+  }
+  .preview .placeholder strong {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--ink);
+    font-weight: 650;
+  }
+
+  .preview-split {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    width: 100%;
+    height: min(480px, 65vh);
+    min-height: 250px;
+  }
+  .preview-split .split-pane {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    background: #f3efe6;
+    overflow: hidden;
+  }
+  .preview-split .split-pane.before {
+    border-right: 2px solid #fff;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.12);
+  }
+  .preview-split .split-pane img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    object-fit: contain;
+    object-position: center;
+  }
+  .preview-split .split-tag {
+    position: absolute;
+    top: 8px; left: 8px;
+    z-index: 2;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+    color: #fff;
+    background: rgba(20,18,16,0.55);
+    pointer-events: none;
+  }
+
+  /* ---- 响应数据 ---- */
+  .resp-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 6px 16px;
+    font-size: 0.88rem;
+    line-height: 1.6;
+    margin-bottom: 10px;
+  }
+  .resp-grid .key {
+    color: var(--muted);
+    font-weight: 600;
+    white-space: nowrap;
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 0.84rem;
+  }
+  .resp-grid .val {
+    color: var(--ink);
+    word-break: break-all;
+  }
+  .resp-grid .val.ok { color: var(--accent); font-weight: 600; }
+  .resp-grid .val.warn { color: var(--warn); }
+  .resp-grid .val.err { color: var(--danger); }
+
+  .resp-grid .key-group {
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 0.82rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+  .resp-grid .key-group + .val { margin-top: 4px; }
+
+  pre.raw {
+    margin: 0;
+    padding: 12px 14px;
+    overflow: auto;
+    border-radius: 12px;
+    background: #1f1c18;
+    color: #f4efe6;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    max-height: 360px;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+  .badge.onnx { background: #1a1a40; color: #a8c8ff; }
+  .badge.haar { background: #40301a; color: #ffd8a8; }
+  .badge.face { background: var(--accent-soft); color: #0a4d42; }
+  .badge.noface { background: #fff4df; color: #6a4b12; }
+  .badge.fallback { background: #ffe8e0; color: #b04020; }
+
+  @media (max-width: 640px) {
+    .wrap { padding-top: 20px; }
+    .panel { padding: 16px; }
+    .param-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="brand">
+    <div class="brand-mark">
+      <h1>seedance<span>2.0</span></h1>
+      <span class="sub">Debug</span>
+    </div>
+    <a class="back-link" href="/">← 返回首页</a>
+  </header>
+
+  <!-- 参数面板 -->
+  <section class="panel">
+    <h2>检测参数</h2>
+    <div class="param-grid">
+      <div class="param-item">
+        <label>检测模型</label>
+        <select id="detector">
+          <option value="onnx" selected>ONNX (YuNet) — 精准人脸+五点</option>
+          <option value="haar">Haar Cascade — 传统级联</option>
+          <option value="auto">自动（ONNX 优先）</option>
+        </select>
+      </div>
+      <div class="param-item">
+        <label>检测方式</label>
+        <select id="method">
+          <option value="face" selected>人脸检测 → 眼睛部位</option>
+          <option value="noFace">全图直接检眼（跳过人脸）</option>
+        </select>
+      </div>
+      <div class="param-item">
+        <label>遮挡框大小</label>
+        <input type="range" id="size" min="1" max="10" step="1" value="5">
+      </div>
+    </div>
+    <div class="check-row">
+      <label><input type="checkbox" id="singleEye" checked> 每脸遮单眼</label>
+      <label class="file-btn" id="fileBtn">
+        选择图片
+        <input type="file" id="file" accept="image/*">
+      </label>
+    </div>
+    <div id="status">就绪。拖入图片或点击选择后自动检测。</div>
+    <div class="preview" id="preview" role="button" tabindex="0" aria-label="拖入或点击选择图片">
+      <div class="placeholder">
+        <strong>拖拽图片到此处</strong>
+        或点击选择 · jpg / png / webp
+      </div>
+    </div>
+  </section>
+
+  <!-- 响应面板 -->
+  <section class="panel">
+    <h2>响应详情</h2>
+    <div id="respDetail">
+      <p style="color:var(--muted);font-size:0.92rem">处理图片后在此显示完整响应数据。</p>
+    </div>
+    <pre class="raw" id="rawJson"></pre>
+  </section>
+</div>
+
+<script>
+const statusEl = document.getElementById('status');
+const fileInput = document.getElementById('file');
+const fileBtn = document.getElementById('fileBtn');
+const detectorSelect = document.getElementById('detector');
+const methodSelect = document.getElementById('method');
+const singleEyeBox = document.getElementById('singleEye');
+const sizeInput = document.getElementById('size');
+const preview = document.getElementById('preview');
+const respDetail = document.getElementById('respDetail');
+const rawJson = document.getElementById('rawJson');
+
+fileInput.disabled = false;
+
+// 检测方式→模型兼容逻辑
+methodSelect.addEventListener('change', () => {
+  if (methodSelect.value === 'noFace' && (detectorSelect.value === 'auto' || detectorSelect.value === 'onnx')) {
+    detectorSelect.value = 'haar';
+    setStatus('全图检眼模式自动切换到 Haar 模型', false);
+  }
+});
+detectorSelect.addEventListener('change', () => {
+  if (detectorSelect.value === 'onnx' && methodSelect.value === 'noFace') {
+    methodSelect.value = 'face';
+    setStatus('ONNX 不支持全图检眼，已切回人脸检测模式', false);
+  }
+});
+
+function setStatus(msg, isErr) {
+  statusEl.textContent = msg;
+  statusEl.className = isErr ? 'err' : '';
+}
+
+function setBusy(busy) {
+  fileInput.disabled = busy;
+  fileBtn.classList.toggle('is-disabled', busy);
+  preview.classList.toggle('is-busy', busy);
+  preview.setAttribute('aria-busy', busy ? 'true' : 'false');
+}
+
+function pickImageFile(fileList) {
+  if (!fileList || !fileList.length) return null;
+  for (const f of fileList) {
+    if (f && (f.type || '').startsWith('image/')) return f;
+  }
+  const first = fileList[0];
+  if (first && /\.(jpe?g|png|webp)$/i.test(first.name || '')) return first;
+  return null;
+}
+
+function showCompare(inputUrl, outUrl) {
+  preview.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.className = 'preview-split';
+  const paneBefore = document.createElement('div');
+  paneBefore.className = 'split-pane before';
+  const before = document.createElement('img');
+  before.alt = '原图'; before.src = inputUrl || '';
+  const tagBefore = document.createElement('span');
+  tagBefore.className = 'split-tag'; tagBefore.textContent = '原图';
+  paneBefore.appendChild(before); paneBefore.appendChild(tagBefore);
+  const paneAfter = document.createElement('div');
+  paneAfter.className = 'split-pane after';
+  const after = document.createElement('img');
+  after.alt = '处理结果'; after.src = outUrl;
+  const tagAfter = document.createElement('span');
+  tagAfter.className = 'split-tag'; tagAfter.textContent = '结果';
+  paneAfter.appendChild(after); paneAfter.appendChild(tagAfter);
+  wrap.appendChild(paneBefore); wrap.appendChild(paneAfter);
+  preview.appendChild(wrap);
+  before.addEventListener('error', () => { tagBefore.textContent = '原图加载失败'; before.remove(); });
+}
+
+function renderDetail(data) {
+  const d = data || {};
+  const det = d.detector || '—';
+  const noFaceUsed = d.faceCounts == null;
+  const fc = d.faceCounts || {};
+  const timings = d.timings || {};
+
+  const detBadge = det === 'onnx' ? '<span class="badge onnx">ONNX</span>' : '<span class="badge haar">Haar</span>';
+  const methodBadge = noFaceUsed ? '<span class="badge noface">全图检眼</span>' : '<span class="badge face">人脸→眼睛</span>';
+
+  // 判断是否走了 Haar 双保险兜底
+  const haarFallback = fc.onnx != null && fc.haar != null;
+  const fallbackBadge = haarFallback ? '<span class="badge fallback">ONNX+Haar 双保险</span>' : '';
+
+  let html = '<div class="resp-grid">';
+
+  // 基本结果
+  html += `<span class="key-group">结果</span><span></span>`;
+  html += `<span class="key">ok</span><span class="val ${d.ok ? 'ok' : 'err'}">${d.ok ? '✔ 成功' : '✘ 失败'}</span>`;
+  if (d.error) html += `<span class="key">error</span><span class="val err">${d.error}</span>`;
+  html += `<span class="key">id</span><span class="val">${d.id || '—'}</span>`;
+
+  // 检测参数
+  html += `<span class="key-group">检测参数</span><span></span>`;
+  html += `<span class="key">detector</span><span class="val">${det} ${detBadge} ${fallbackBadge}</span>`;
+  html += `<span class="key">noFace</span><span class="val">${noFaceUsed ? '是' : '否'} ${methodBadge}</span>`;
+  html += `<span class="key">singleEye</span><span class="val">${d.singleEye !== false ? '是' : '否'}</span>`;
+  html += `<span class="key">size</span><span class="val">${d.size != null ? d.size : '—'}</span>`;
+
+  // 检测统计
+  html += `<span class="key-group">检测统计</span><span></span>`;
+  html += `<span class="key">eyeCount</span><span class="val">${d.eyeCount != null ? d.eyeCount : '—'}</span>`;
+  if (fc.merged != null) html += `<span class="key">faceCount (合计)</span><span class="val">${fc.merged}</span>`;
+  // 双保险模式：ONNX + Haar 分段
+  if (fc.onnx && fc.onnx.merged != null) {
+    html += `<span class="key">  ├ ONNX</span><span class="val">${fc.onnx.merged} 张脸</span>`;
+  }
+  if (fc.haar && fc.haar.merged != null) {
+    html += `<span class="key">  ├ Haar</span><span class="val">${fc.haar.merged} 张脸</span>`;
+    if (fc.haar.frontal != null) html += `<span class="key">  │   ├ frontal</span><span class="val">${fc.haar.frontal}</span>`;
+    if (fc.haar.profile != null) html += `<span class="key">  │   ├ profile</span><span class="val">${fc.haar.profile}</span>`;
+    if (fc.haar.profileFlip != null) html += `<span class="key">  │   └ profileFlip</span><span class="val">${fc.haar.profileFlip}</span>`;
+  }
+  // 单模型模式（Haar 直接返回的 flat 统计）
+  if (fc.frontal != null) html += `<span class="key">  ├ frontal</span><span class="val">${fc.frontal}</span>`;
+  if (fc.profile != null) html += `<span class="key">  ├ profile</span><span class="val">${fc.profile}</span>`;
+  if (fc.profileFlip != null) html += `<span class="key">  └ profileFlip</span><span class="val">${fc.profileFlip}</span>`;
+
+  // 时间分布
+  html += `<span class="key-group">耗时 (ms)</span><span></span>`;
+  const timingLabels = {
+    'decode': '解码',
+    'mat': 'Mat 转换',
+    'detect.yunet': 'YuNet 检测',
+    'detect.haarFallback': 'Haar 双保险兜底',
+    'detect.frontal': '正脸检测',
+    'detect.profile': '侧脸检测',
+    'detect.profileFlip': '翻转侧脸',
+    'detect.merge': '人脸合并',
+    'detect.eyes': '眼睛检测',
+    'mask': '绘制遮挡',
+    'encode': '编码 WebP',
+    'purge': '清理过期',
+    'upload': '上传解析',
+    'save.in': '保存原图',
+    'save.out': '保存结果',
+  };
+  for (const [k, v] of Object.entries(timings)) {
+    const label = timingLabels[k] || k;
+    html += `<span class="key">${label}</span><span class="val">${(v / 1e6).toFixed(2)} ms</span>`;
+  }
+
+  // 图片信息
+  html += `<span class="key-group">图片</span><span></span>`;
+  html += `<span class="key">url</span><span class="val" style="font-size:0.82rem">${d.url || '—'}</span>`;
+  html += `<span class="key">inputUrl</span><span class="val" style="font-size:0.82rem">${d.inputUrl || '—'}</span>`;
+
+  html += '</div>';
+  respDetail.innerHTML = html;
+  rawJson.textContent = JSON.stringify(d, null, 2);
+}
+
+async function runDetect(file) {
+  setStatus('处理中…');
+  const fd = new FormData();
+  fd.append('image', file, file.name || 'upload.jpg');
+  fd.append('size', String(sizeInput.value || 5));
+  fd.append('singleEye', singleEyeBox.checked ? '1' : '0');
+  const detVal = detectorSelect.value;
+  if (detVal && detVal !== 'auto') fd.append('detector', detVal);
+  if (methodSelect.value === 'noFace') fd.append('noFace', '1');
+
+  const res = await fetch('/api/detect', { method: 'POST', body: fd });
+  let data = null;
+  try { data = await res.json(); } catch (_) {}
+  if (!res.ok || !data || !data.ok) {
+    throw new Error((data && data.error) || ('HTTP ' + res.status));
+  }
+  showCompare(data.inputUrl, data.url);
+  renderDetail(data);
+  const fc = data.faceCounts || {};
+  const faceN = fc.merged != null ? fc.merged : 0;
+  setStatus(`✔ 完成：${faceN} 张脸 · ${data.eyeCount} 眼 · ${data.detector} · size=${data.size} · 共 ${Object.values(data.timings || {}).reduce((a, b) => a + Number(b), 0) / 1e6 | 0}ms`);
+}
+
+async function handleImageFile(file) {
+  if (!file) return;
+  setBusy(true);
+  respDetail.innerHTML = '<p style="color:var(--muted);font-size:0.9rem">处理中…</p>';
+  rawJson.textContent = '';
+  try {
+    await runDetect(file);
+  } catch (err) {
+    setStatus('失败：' + (err.message || err), true);
+  } finally {
+    setBusy(false);
+    fileInput.value = '';
+  }
+}
+
+fileInput.addEventListener('change', async (e) => {
+  const file = pickImageFile(e.target.files);
+  if (!file) { setStatus('请选择 jpg / png / webp 图片', true); return; }
+  await handleImageFile(file);
+});
+
+preview.addEventListener('click', () => {
+  if (preview.classList.contains('is-busy') || fileInput.disabled) return;
+  fileInput.click();
+});
+preview.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  e.preventDefault();
+  if (preview.classList.contains('is-busy') || fileInput.disabled) return;
+  fileInput.click();
+});
+
+let dragDepth = 0;
+function hasFiles(e) {
+  const types = e.dataTransfer && e.dataTransfer.types;
+  return types && Array.from(types).includes('Files');
+}
+preview.addEventListener('dragenter', (e) => {
+  if (!hasFiles(e) || preview.classList.contains('is-busy')) return;
+  e.preventDefault(); dragDepth += 1;
+  preview.classList.add('is-dragover');
+});
+preview.addEventListener('dragover', (e) => {
+  if (!hasFiles(e) || preview.classList.contains('is-busy')) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'copy';
+  preview.classList.add('is-dragover');
+});
+preview.addEventListener('dragleave', (e) => {
+  if (!hasFiles(e)) return;
+  e.preventDefault();
+  dragDepth = Math.max(0, dragDepth - 1);
+  if (dragDepth === 0) preview.classList.remove('is-dragover');
+});
+preview.addEventListener('drop', async (e) => {
+  e.preventDefault(); dragDepth = 0;
+  preview.classList.remove('is-dragover');
+  if (preview.classList.contains('is-busy')) return;
+  const file = pickImageFile(e.dataTransfer && e.dataTransfer.files);
+  if (!file) { setStatus('请拖入 jpg / png / webp 图片', true); return; }
+  await handleImageFile(file);
+});
+</script>
+</body>
+</html>
