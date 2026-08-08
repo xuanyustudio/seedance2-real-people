@@ -9,12 +9,26 @@
 
 Make `OpenCV-Haar-eyes` safe and discoverable on GitHub while keeping **seedance2.0 人脸直过** as the product brand and a technical subtitle (OpenCV / YuNet Eye Mask API).
 
+### Core positioning (must emphasize everywhere)
+
+对外 final messaging pillar — appear in About, README hero, Features, How it works, and Keywords:**
+
+| ZH | EN |
+|----|----|
+| 本地小模型，CPU 过人脸 | Local small models; face pipeline runs on CPU |
+| 不调用第三方大模型 / 云端视觉 API | No third-party LLMs or cloud vision APIs |
+| 推理成本为 0（仅本机算力） | Inference cost = $0 (your machine only) |
+| 数据不出本机（默认本地部署） | Data stays on-prem by default |
+
+Do **not** position this as a generative / LLM product. Contrast with cloud face APIs and paid vision models is intentional and should be explicit (short, not ranting).
+
 Success criteria:
 
 1. A stranger can clone, `npm install`, `npm start`, and call `/api/detect` without local absolute paths or missing docs.
 2. No runtime uploads, logs, deploy host secrets, or build zips land in the repo.
 3. README is bilingual (ZH + EN); Topics / `package.json` keywords support search.
 4. License is Apache-2.0 end-to-end (`LICENSE` + `package.json`).
+5. A first-time reader understands within 10 seconds: **local small model + CPU + no third-party LLM + zero inference cost**.
 
 Out of scope (方案 3 deferred): demo GIF, full English API.md, GitHub Actions CI, Issue templates, Git LFS.
 
@@ -27,17 +41,18 @@ Out of scope (方案 3 deferred): demo GIF, full English API.md, GitHub Actions 
 | License | B — Apache-2.0 |
 | Docs language | C — bilingual README; API.md Chinese-primary + EN blurb |
 | Approach | 2 — publish-ready package |
+| Value prop | Local small-model CPU face pass; no third-party LLM; $0 inference cost |
 
 ## 1. Repository identity
 
 - **Repo name:** `OpenCV-Haar-eyes`
 - **GitHub About description:**  
-  `seedance2.0 face-pass API — local OpenCV/YuNet eye masking; upload image, get masked WebP URL.`
+  `seedance2.0 face-pass — local small-model CPU eye mask (YuNet/Haar). No cloud LLM. $0 inference cost.`
 - **Topics:**  
-  `seedance`, `opencv`, `yunet`, `haar-cascade`, `eye-detection`, `face-detection`, `image-masking`, `privacy`, `nodejs`, `onnx`, `computer-vision`, `api`
+  `seedance`, `opencv`, `yunet`, `haar-cascade`, `eye-detection`, `face-detection`, `image-masking`, `privacy`, `nodejs`, `onnx`, `computer-vision`, `api`, `local-ai`, `cpu-inference`, `zero-cost`
 - **package.json:**
-  - `description`: bilingual one-liner aligned with About
-  - `keywords`: same set as Topics (plus short aliases if useful, e.g. `eye-mask`)
+  - `description`: bilingual one-liner stressing local CPU small models + zero API cost
+  - `keywords`: same set as Topics (plus short aliases if useful, e.g. `eye-mask`, `on-device`)
   - `license`: `Apache-2.0`
   - `author`: leave empty unless user supplies a name later
 
@@ -46,15 +61,19 @@ Out of scope (方案 3 deferred): demo GIF, full English API.md, GitHub Actions 
 ### README.md structure (single bilingual file)
 
 1. Title + badges (License Apache-2.0, Node, OpenCV)
-2. One EN sentence + one ZH sentence (what it is)
-3. Features / 特性 (bilingual bullet list)
+2. One EN sentence + one ZH sentence (what it is) — **immediately followed by** the local/CPU/zero-cost/no-LLM line
+3. Features / 特性 (bilingual); **first bullets must cover:**
+   - Local YuNet ONNX (~small) + Haar cascades; CPU inference
+   - No OpenAI / cloud vision / third-party LLM dependency
+   - $0 per-request inference cost after self-hosting
+   - Then product features (eye mask, dual detectors, image host, etc.)
 4. Demo: `curl` with `sample/lena.jpg` (no mandatory screenshot)
 5. Quick Start / 快速开始: relative paths only; `npm install` → `npm start` → browser
 6. API Summary: `/api/detect`, `/api/upload` tables; link to `docs/API.md`
-7. How it works / 原理: default `onnx` (YuNet) / `haar` fallback
+7. How it works / 原理: default `onnx` (YuNet) / `haar` fallback; restate “runs fully offline on CPU after models are present”
 8. Project layout / 目录
 9. Config: `PORT`, `RETENTION_DAYS`, deploy env vars (no real hosts)
-10. Keywords (one EN line + one ZH line for search)
+10. Keywords (one EN line + one ZH line for search; include 本地小模型 / zero-cost / on-device)
 11. Short “Issues / PRs welcome” (3–5 lines; no separate CONTRIBUTING.md)
 12. License (Apache-2.0)
 
