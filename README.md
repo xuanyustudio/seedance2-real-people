@@ -70,7 +70,7 @@ Full reference: [docs/API.md](docs/API.md).
 ## Directory layout / 目录结构
 
 ```
-OpenCV-Haar-eyes/
+seedance2-real-people/
 ├─ server.js                 # HTTP API + static assets
 ├─ lib/
 │  ├─ detect-eyes.js         # detect + mask orchestration
@@ -124,4 +124,4 @@ Issues and pull requests are welcome. Please keep changes focused, avoid committ
 
 Apache License 2.0 — see [LICENSE](LICENSE).
 
-Copyright 2026 OpenCV-Haar-eyes contributors
+Copyright 2026 seedance2-real-people contributors

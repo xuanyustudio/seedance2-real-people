@@ -1,5 +1,5 @@
 {
-  "name": "opencv-haar-eyes",
+  "name": "seedance2-real-people",
   "version": "1.0.0",
   "description": "seedance2.0 face-pass API: local CPU small-model eye masking (YuNet/Haar). No cloud LLM. Zero inference cost. 本地小模型 CPU 过人脸，不调用第三方大模型，推理成本为 0。",
   "main": "server.js",
