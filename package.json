@@ -1,0 +1,36 @@
+{
+  "name": "opencv-haar-eyes",
+  "version": "1.0.0",
+  "description": "seedance2.0 face-pass API: local CPU small-model eye masking (YuNet/Haar). No cloud LLM. Zero inference cost. 本地小模型 CPU 过人脸，不调用第三方大模型，推理成本为 0。",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "download-yunet": "scripts\\download-yunet.bat",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "seedance",
+    "opencv",
+    "yunet",
+    "haar-cascade",
+    "eye-detection",
+    "face-detection",
+    "image-masking",
+    "privacy",
+    "nodejs",
+    "onnx",
+    "computer-vision",
+    "api",
+    "local-ai",
+    "cpu-inference",
+    "zero-cost",
+    "on-device",
+    "eye-mask"
+  ],
+  "author": "",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "onnxruntime-node": "^1.27.0",
+    "sharp": "^0.35.3"
+  }
+}
