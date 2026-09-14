@@ -271,6 +271,24 @@ async function handleDetect(req, res) {
   let source = 'upload';
   let imageUrl = '';
   let httpStatus = null;
+
+  function logFail(errorMsg) {
+    const rec = {
+      ts: new Date().toISOString(),
+      date,
+      id,
+      ok: false,
+      source,
+      error: errorMsg,
+      timings: perf.snapshot(),
+    };
+    if (source === 'url') {
+      if (imageUrl) rec.imageUrl = imageUrl;
+      if (httpStatus != null) rec.httpStatus = httpStatus;
+    }
+    writePerfLog(DATA_LOGS, rec);
+  }
+
   try {
     perf.start('purge');
     purgeData();
@@ -304,11 +322,12 @@ async function handleDetect(req, res) {
       let downloaded;
       try {
         downloaded = await fetchImage(imageUrl);
-        perf.end('download');
       } catch (e) {
-        try { perf.end('download'); } catch (_) {}
+        if (e && e.httpStatus != null) httpStatus = e.httpStatus;
         source = 'url';
         throw e;
+      } finally {
+        perf.end('download');
       }
       buffer = downloaded.buffer;
       mimeOrExt = detect.normalizeExt(downloaded.mime) || detect.normalizeExt(imageUrl);
@@ -317,7 +336,9 @@ async function handleDetect(req, res) {
     }
 
     if (!mimeOrExt) {
-      sendJson(res, 400, { ok: false, error: '仅支持 jpeg / png / webp 图片' });
+      const msg = '仅支持 jpeg / png / webp 图片';
+      logFail(msg);
+      sendJson(res, 400, { ok: false, error: msg });
       return;
     }
     const ext = mimeOrExt;
@@ -339,7 +360,9 @@ async function handleDetect(req, res) {
     try {
       detector = detect.normalizeDetector(fields.detector);
     } catch (e) {
-      sendJson(res, e.statusCode || 400, { ok: false, error: e.message || String(e) });
+      const msg = (e && e.message) || String(e);
+      logFail(msg);
+      sendJson(res, e.statusCode || 400, { ok: false, error: msg });
       return;
     }
     const result = await detect.processBuffer(buffer, {
@@ -400,19 +423,9 @@ async function handleDetect(req, res) {
     sendJson(res, 200, payload);
   } catch (err) {
     const code = err && err.statusCode ? err.statusCode : 500;
-    writePerfLog(DATA_LOGS, {
-      ts: new Date().toISOString(),
-      date,
-      id,
-      ok: false,
-      source,
-      ...(source === 'url'
-        ? { imageUrl, ...(httpStatus != null ? { httpStatus } : {}) }
-        : {}),
-      error: (err && err.message) || String(err),
-      timings: perf.snapshot(),
-    });
-    sendJson(res, code, { ok: false, error: (err && err.message) || String(err), timings: perf.snapshot() });
+    const msg = (err && err.message) || String(err);
+    logFail(msg);
+    sendJson(res, code, { ok: false, error: msg, timings: perf.snapshot() });
   }
 }
 
