@@ -23,7 +23,8 @@ npm start
 
 | 字段 | 必填 | 说明 |
 |------|------|------|
-| `image` | 是 | jpg / png / webp 图片文件 |
+| `image` | 与 `imageUrl` 二选一 | jpg / png / webp 图片文件 |
+| `imageUrl` | 与 `image` 二选一 | http/https 图片 URL；服务端下载后走同一检测流水线；上限 20MB |
 | `detector` | 否 | `onnx`（默认，YuNet+五点关键标）或 `haar`；模型不可用时默认回落 `haar` |
 | `noFace` | 否 | `1` / `true` / `yes`：跳过人脸，全图检眼（主要作用于 `haar`）；默认先人脸再眼睛 |
 | `singleEye` | 否 | 每脸只遮一只眼。`1`/`true`/`yes` 开，`0`/`false`/`no` 关；**省略默认开** |
@@ -60,6 +61,8 @@ npm start
 
 `timings` 单位为毫秒。直接 `GET` `url` 即可下载结果图。
 
+使用 `imageUrl` 成功时，响应还会包含 `source`（`"url"`）与请求的 `imageUrl`；文件上传模式字段集合不变（不含 `source`）。
+
 处理约束：长边超过 **1600px** 时等比缩小（不放大）；结果一律 **WebP**（质量约 80）。原图仍按上传格式保存在 `data/in/`。
 
 同结构日志追加到 `data/logs/YYYY-MM-DD.jsonl`（控制台亦打印 `[perf] ...`），便于汇总瓶颈。
@@ -70,7 +73,7 @@ npm start
 { "ok": false, "error": "错误说明", "timings": { "upload": 3.2, "total": 3.5 } }
 ```
 
-常见状态码：400（参数/格式）、413（超过 10MB）、500（处理失败）。
+常见状态码：400（参数/格式）、413（超过 20MB）、500（处理失败）。
 
 ## `POST /api/upload`（图床）
 
@@ -113,6 +116,7 @@ curl --location "http://localhost:8060/api/upload" ^
 
 ```bat
 curl -F "image=@sample/lena.jpg" -F "size=5" http://localhost:8060/api/detect
+curl -F "imageUrl=https://example.com/photo.jpg" -F "size=5" http://localhost:8060/api/detect
 curl -F "image=@sample/lena.jpg" -F "detector=haar" -F "size=5" http://localhost:8060/api/detect
 curl -F "image=@sample/lena.jpg" -F "detector=onnx" -F "singleEye=0" -F "size=5" http://localhost:8060/api/detect
 curl -F "image=@photo.webp" -F "noFace=1" -F "detector=haar" -F "size=8" http://localhost:8060/api/detect

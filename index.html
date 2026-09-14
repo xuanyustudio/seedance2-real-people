@@ -398,7 +398,7 @@
       <div class="brand-mark">
         <h1>seedance<span>2.0</span></h1>
       </div>
-      <p class="lead">人脸直过接口 — 上传图片，自动遮挡眼睛（白底黑边方块），返回可访问结果图地址。全部本地处理。</p>
+      <p class="lead">人脸直过接口 — 上传图片或传图片 URL，自动遮挡眼睛（白底黑边方块），返回可访问结果图地址。全部本地处理。</p>
     </header>
 
     <section class="panel" aria-labelledby="demo-title">
@@ -442,7 +442,11 @@
         <tbody>
           <tr>
             <td><code>image</code></td>
-            <td>必填。jpg / png / webp。处理时长边&gt;1600 等比缩小；结果一律 <code>.webp</code></td>
+            <td>与 <code>imageUrl</code> 二选一。jpg / png / webp。处理时长边&gt;1600 等比缩小；结果一律 <code>.webp</code></td>
+          </tr>
+          <tr>
+            <td><code>imageUrl</code></td>
+            <td>与 <code>image</code> 二选一。http/https 图片 URL；服务端下载后走同一流水线；上限 20MB</td>
           </tr>
           <tr>
             <td><code>detector</code></td>
@@ -511,6 +515,7 @@
 }`;
     document.getElementById('sampleCurl').textContent =
       `# 默认自动选模型\ncurl -F "image=@photo.jpg" -F "size=5" ${baseUrl}/api/detect\n` +
+      `# 传图片 URL\ncurl -F "imageUrl=https://example.com/photo.jpg" -F "size=5" ${baseUrl}/api/detect\n` +
       `# 强制 ONNX / Haar\ncurl -F "image=@photo.jpg" -F "detector=haar" -F "size=5" ${baseUrl}/api/detect\n` +
       `# 直接检眼（仅 Haar）\ncurl -F "image=@photo.webp" -F "noFace=1" -F "size=8" ${baseUrl}/api/detect`;
 

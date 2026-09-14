@@ -51,7 +51,8 @@ Then open `http://localhost:8060`.
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `image` | yes | jpg / png / webp |
+| `image` | either / 二选一 | jpg / png / webp file (provide `image` **or** `imageUrl`) |
+| `imageUrl` | either / 二选一 | http/https image URL; server downloads then same pipeline; max 20MB |
 | `detector` | no | `onnx` (default, YuNet) or `haar` |
 | `noFace` | no | `1`/`true`/`yes`: skip face stage, scan full image for eyes (mainly `haar`) |
 | `singleEye` | no | mask one eye per face; **on by default** (`0`/`false`/`no` to disable) |
