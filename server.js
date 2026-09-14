@@ -14,6 +14,7 @@ const crypto = require('crypto');
 
 const detect = require('./lib/detect-eyes');
 const { parseMultipart } = require('./lib/multipart');
+const { fetchImage } = require('./lib/fetch-image');
 const { todayStamp, purgeOldDateDirs } = require('./lib/retention');
 const { Perf, writePerfLog } = require('./lib/perf');
 const hosting = require('./lib/hosting');
@@ -267,6 +268,9 @@ async function handleDetect(req, res) {
   const perf = new Perf();
   const date = todayStamp();
   let id = null;
+  let source = 'upload';
+  let imageUrl = '';
+  let httpStatus = null;
   try {
     perf.start('purge');
     purgeData();
@@ -276,16 +280,47 @@ async function handleDetect(req, res) {
     const { fields, file } = await parseMultipart(req);
     perf.end('upload');
 
-    if (!file || !file.buffer || !file.buffer.length) {
-      sendJson(res, 400, { ok: false, error: '缺少图片字段 image' });
+    imageUrl = String((fields && fields.imageUrl) || '').trim();
+    const hasFile = !!(file && file.buffer && file.buffer.length);
+    const hasUrl = !!imageUrl;
+
+    if (hasFile && hasUrl) {
+      sendJson(res, 400, { ok: false, error: '请只提供 image 或 imageUrl 其中之一，不要同时传' });
+      return;
+    }
+    if (!hasFile && !hasUrl) {
+      sendJson(res, 400, { ok: false, error: '请提供 image 文件或 imageUrl' });
       return;
     }
 
-    const ext = detect.normalizeExt(file.mime) || detect.normalizeExt(file.filename);
-    if (!ext) {
+    let buffer;
+    let mimeOrExt;
+
+    if (hasFile) {
+      buffer = file.buffer;
+      mimeOrExt = detect.normalizeExt(file.mime) || detect.normalizeExt(file.filename);
+    } else {
+      perf.start('download');
+      let downloaded;
+      try {
+        downloaded = await fetchImage(imageUrl);
+        perf.end('download');
+      } catch (e) {
+        try { perf.end('download'); } catch (_) {}
+        source = 'url';
+        throw e;
+      }
+      buffer = downloaded.buffer;
+      mimeOrExt = detect.normalizeExt(downloaded.mime) || detect.normalizeExt(imageUrl);
+      source = 'url';
+      httpStatus = downloaded.httpStatus;
+    }
+
+    if (!mimeOrExt) {
       sendJson(res, 400, { ok: false, error: '仅支持 jpeg / png / webp 图片' });
       return;
     }
+    const ext = mimeOrExt;
 
     id = crypto.randomBytes(8).toString('hex');
     const inDir = path.join(DATA_IN, date);
@@ -295,7 +330,7 @@ async function handleDetect(req, res) {
 
     perf.start('save.in');
     const inPath = path.join(inDir, id + ext);
-    fs.writeFileSync(inPath, file.buffer);
+    fs.writeFileSync(inPath, buffer);
     perf.end('save.in');
 
     const size = parseSize(fields.size);
@@ -307,7 +342,7 @@ async function handleDetect(req, res) {
       sendJson(res, e.statusCode || 400, { ok: false, error: e.message || String(e) });
       return;
     }
-    const result = await detect.processBuffer(file.buffer, {
+    const result = await detect.processBuffer(buffer, {
       noFace: truthy(fields.noFace),
       singleEye,
       mimeOrExt: ext,
@@ -336,13 +371,19 @@ async function handleDetect(req, res) {
       timings,
       faceCounts: result.faceCounts || null,
     };
+    if (source === 'url') {
+      payload.source = 'url';
+      payload.imageUrl = imageUrl;
+    }
 
     writePerfLog(DATA_LOGS, {
       ts: new Date().toISOString(),
       date,
       id,
       ok: true,
-      bytesIn: file.buffer.length,
+      source,
+      ...(source === 'url' ? { imageUrl, httpStatus } : {}),
+      bytesIn: buffer.length,
       bytesOut: result.outBuffer.length,
       width: result.width,
       height: result.height,
@@ -364,6 +405,10 @@ async function handleDetect(req, res) {
       date,
       id,
       ok: false,
+      source,
+      ...(source === 'url'
+        ? { imageUrl, ...(httpStatus != null ? { httpStatus } : {}) }
+        : {}),
       error: (err && err.message) || String(err),
       timings: perf.snapshot(),
     });
@@ -444,7 +489,7 @@ async function main() {
 
   server.listen(PORT, () => {
     console.log(`眼睛遮挡 API 已启动: http://localhost:${PORT}`);
-    console.log(`POST /api/detect  上传 image（可选 detector=onnx|haar、noFace=1、singleEye=0）`);
+    console.log(`POST /api/detect  image 或 imageUrl（可选 detector / noFace / singleEye / size）`);
     console.log(`POST /api/upload  图床（Bearer token + file；图片/音频/视频）`);
     console.log(`GET  /api/proxy/image/{id}.ext`);
     console.log(`结果保留 ${RETENTION_DAYS} 天（RETENTION_DAYS）`);

@@ -25,6 +25,7 @@ const FILES = [
   'docs/API.md',
   'lib/detect-eyes.js',
   'lib/multipart.js',
+  'lib/fetch-image.js',
   'lib/hosting.js',
   'lib/retention.js',
   'lib/perf.js',
