@@ -140,6 +140,55 @@
   .file-btn:disabled input,
   .file-btn.is-disabled input { cursor: not-allowed; }
 
+  .url-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex: 1 1 280px;
+    min-width: min(280px, 100%);
+  }
+  .url-row input[type="url"] {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 10px 14px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: #fffdf8;
+    color: var(--ink);
+    font: inherit;
+    font-size: 0.95rem;
+  }
+  .url-row input[type="url"]:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(15, 107, 92, 0.15);
+  }
+  .url-row input[type="url"]:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .url-go {
+    flex: 0 0 auto;
+    padding: 10px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--ink);
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+  }
+  .url-go:hover:not(:disabled) {
+    transform: translateY(-1px);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .url-go:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+  }
+
   .check {
     display: inline-flex;
     align-items: center;
@@ -408,6 +457,10 @@
           选择图片
           <input type="file" id="file" accept="image/*" disabled>
         </label>
+        <div class="url-row">
+          <input type="url" id="imageUrl" placeholder="或粘贴图片网络地址 http(s)://…" autocomplete="off" disabled>
+          <button type="button" class="url-go" id="urlGo" disabled>处理 URL</button>
+        </div>
         <label class="check">
           <input type="checkbox" id="singleEye" checked> 每脸遮单眼
         </label>
@@ -418,11 +471,11 @@
         <strong id="sizeVal">5</strong>
         <span>（2≈眼睛，10≈整张脸，默认 5）</span>
       </div>
-      <div id="status">准备就绪，拖入或选择图片。</div>
+      <div id="status">准备就绪：选择图片，或粘贴网络地址。</div>
       <div class="preview" id="preview" role="button" tabindex="0" aria-label="拖入或点击选择图片">
         <div class="placeholder">
           <strong>拖拽图片到这里</strong>
-          或点击选择 · 支持 jpg / png / webp
+          或点击选择 · 也可上方粘贴 URL · jpg / png / webp
         </div>
       </div>
     </section>
@@ -493,6 +546,8 @@
     const statusEl = document.getElementById('status');
     const fileInput = document.getElementById('file');
     const fileBtn = document.getElementById('fileBtn');
+    const imageUrlInput = document.getElementById('imageUrl');
+    const urlGo = document.getElementById('urlGo');
     const singleEyeBox = document.getElementById('singleEye');
     const sizeInput = document.getElementById('size');
     const sizeVal = document.getElementById('sizeVal');
@@ -525,6 +580,8 @@
 
     fileInput.disabled = false;
     fileBtn.classList.remove('is-disabled');
+    imageUrlInput.disabled = false;
+    urlGo.disabled = false;
 
     function setStatus(msg, isErr) {
       statusEl.textContent = msg;
@@ -534,6 +591,8 @@
     function setBusy(busy) {
       fileInput.disabled = busy;
       fileBtn.classList.toggle('is-disabled', busy);
+      imageUrlInput.disabled = busy;
+      urlGo.disabled = busy;
       preview.classList.toggle('is-busy', busy);
       preview.setAttribute('aria-busy', busy ? 'true' : 'false');
     }
@@ -586,13 +645,25 @@
       });
     }
 
-    async function runDetect(file) {
+    async function runDetectFile(file) {
       setStatus('上传并处理中…');
       const fd = new FormData();
       fd.append('image', file, file.name || 'upload.jpg');
       fd.append('size', String(sizeInput.value || 5));
       fd.append('singleEye', singleEyeBox.checked ? '1' : '0');
+      return postDetect(fd);
+    }
 
+    async function runDetectUrl(imageUrl) {
+      setStatus('下载并处理中…');
+      const fd = new FormData();
+      fd.append('imageUrl', imageUrl);
+      fd.append('size', String(sizeInput.value || 5));
+      fd.append('singleEye', singleEyeBox.checked ? '1' : '0');
+      return postDetect(fd);
+    }
+
+    async function postDetect(fd) {
       const res = await fetch('/api/detect', { method: 'POST', body: fd });
       let data = null;
       try { data = await res.json(); } catch (_) {}
@@ -604,14 +675,15 @@
         ? data.faceCounts.merged
         : 0;
       const eyeMode = data.singleEye !== false ? '单眼' : '双眼';
-      setStatus(`完成：${faceN} 张脸 · ${data.eyeCount} 只眼睛（${eyeMode}） · size=${data.size} · ${data.url}`);
+      const via = data.source === 'url' ? ' · URL' : '';
+      setStatus(`完成：${faceN} 张脸 · ${data.eyeCount} 只眼睛（${eyeMode}） · size=${data.size}${via} · ${data.url}`);
     }
 
     async function handleImageFile(file) {
       if (!file) return;
       setBusy(true);
       try {
-        await runDetect(file);
+        await runDetectFile(file);
       } catch (err) {
         setStatus('处理失败：' + (err.message || err), true);
       } finally {
@@ -619,6 +691,34 @@
         fileInput.value = '';
       }
     }
+
+    async function handleImageUrl() {
+      const imageUrl = String(imageUrlInput.value || '').trim();
+      if (!imageUrl) {
+        setStatus('请粘贴 http/https 图片地址', true);
+        return;
+      }
+      if (!/^https?:\/\//i.test(imageUrl)) {
+        setStatus('图片地址仅支持 http/https', true);
+        return;
+      }
+      setBusy(true);
+      try {
+        await runDetectUrl(imageUrl);
+      } catch (err) {
+        setStatus('处理失败：' + (err.message || err), true);
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    urlGo.addEventListener('click', () => { handleImageUrl(); });
+    imageUrlInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleImageUrl();
+      }
+    });
 
     fileInput.addEventListener('change', async (e) => {
       const file = pickImageFile(e.target.files);
