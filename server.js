@@ -273,6 +273,7 @@ async function handleDetect(req, res) {
   let httpStatus = null;
 
   function logFail(errorMsg) {
+    const timings = perf.snapshot();
     const rec = {
       ts: new Date().toISOString(),
       date,
@@ -280,11 +281,12 @@ async function handleDetect(req, res) {
       ok: false,
       source,
       error: errorMsg,
-      timings: perf.snapshot(),
+      timings,
     };
     if (source === 'url') {
       if (imageUrl) rec.imageUrl = imageUrl;
       if (httpStatus != null) rec.httpStatus = httpStatus;
+      if (timings.download != null) rec.downloadMs = timings.download;
     }
     writePerfLog(DATA_LOGS, rec);
   }
@@ -333,6 +335,15 @@ async function handleDetect(req, res) {
       mimeOrExt = detect.normalizeExt(downloaded.mime) || detect.normalizeExt(imageUrl);
       source = 'url';
       httpStatus = downloaded.httpStatus;
+      console.log(
+        '[download]',
+        JSON.stringify({
+          imageUrl,
+          downloadMs: perf.snapshot().download,
+          bytes: buffer.length,
+          httpStatus,
+        })
+      );
     }
 
     if (!mimeOrExt) {
@@ -405,7 +416,13 @@ async function handleDetect(req, res) {
       id,
       ok: true,
       source,
-      ...(source === 'url' ? { imageUrl, httpStatus } : {}),
+      ...(source === 'url'
+        ? {
+            imageUrl,
+            httpStatus,
+            downloadMs: timings.download != null ? timings.download : null,
+          }
+        : {}),
       bytesIn: buffer.length,
       bytesOut: result.outBuffer.length,
       width: result.width,
